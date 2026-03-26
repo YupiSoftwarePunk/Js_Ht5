@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ru">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Blog Page</title>
+        <link rel="stylesheet" href="css/style.css">
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;700&display=swap" rel="stylesheet">
+        <script src="js/core/User.js" type="module"></script>
+        <script src="js/core/AdminUser.js" type="module"></script>
+        <script src="js/main.js" type="module"></script>
+        <script src="js/navigation.js" type="module"></script>
+        <script src="js/text-formatter.js" type="module"></script>
+        <script src="js/tests.js" type="module"></script>
+    </head>
+
+    <body>
+        <header role="banner">
+            <h1>Сайт мистера Денискиса</h1>
+            <a href="/" class="logo-link" aria-label="На главную">
+                <img src="img/cover.jpg" alt="Логотип сайта" class="logo-image" height="100" width="100">
+            </a>
+            <nav class="main-nav" aria-label="Основная навигация">
+                <ul class="nav-list">
+                    <li class="nav-item"><a href="index.html" class="nav-link">Главная</a></li>
+                    <li class="nav-item"><a href="about.html" class="nav-link"> О нас</a></li>
+                    <li class="nav-item"><a href="contact.html" class="nav-link">Контакты</a></li>
+                </ul>
+            </nav>
+            <!-- <button id="admin-login-btn" role="button">Войти как админ</button> -->
+            <a href="#admin-modal" id="admin-login-btn" class="btn-secondary" role="button">Войти как админ</a>
+
+            <!-- <button id="open-shortcut">Управление горячими клавишами</button> -->
+            <a href="#shortcuts-modal" id="open-shortcut" class="btn-secondary" role="button">
+                Управление горячими клавишами
+            </a>
+        </header>
+
+        <main>
+            <p>Добро пожаловать на наш сайт!</p>
+            <p>Здесь вы найдете много интересной информации.</p><br>
+
+            <!-- <form method="post" class="search-wrapper" aria-label="Поиск">
+                <label for="search-input" class="visually-hidden">Поиск по записям</label>
+                <input type="text" name="q" placeholder="Поиск постов..." id="search-input" 
+                    accesskey="s" aria-keyshortcuts="Control+Slash" title="Поиск (Alt + S или Ctrl + /)">
+                <span class="hotkey-hint"><kbd>Ctrl</kbd> + <kbd>/</kbd></span>
+            </form> -->
+            <form method="GET" action="/search" class="search-wrapper" role="search">
+                <label for="search-input" class="visually-hidden">Поиск по записям</label>
+                <input type="text" name="q" placeholder="Поиск постов..." id="search-input" 
+                accesskey="s" aria-keyshortcuts="Control+Slash" title="Поиск (Alt + S или Ctrl + /)">
+                <span class="hotkey-hint" aria-hidden="true"><kbd>Ctrl</kbd> + <kbd>/</kbd></span>
+                <button type="submit" class="visually-hidden">Найти</button>
+            </form>
+
+            <select id="sort-posts">
+                <option value="default">Без сортировки</option>
+                <option value="date">По дате (сначала новые)</option>
+                <option value="views">По просмотрам</option>
+            </select>
+
+            <div id="tag-cloud">
+                <strong>Подборки по тегам:</strong>
+                <div id="tags-container" role="group" aria-label="Облако тегов"></div>
+            </div>
+
+            <br><span>Горячие клавиши для выделенных постов</span><br><br>
+            <span class="hotkey-hint" aria-hidden="true">Выделить пост - <kbd>Стрелка вверх</kbd> / <kbd>Стрелка вниз</kbd></span><br>
+            <span class="hotkey-hint" aria-hidden="true">Поставить лайк - <kbd>Space</kbd> / <kbd>Enter</kbd></span><br>
+            <span class="hotkey-hint" aria-hidden="true">Открыть окно редактирования и форматирования - <kbd>E</kbd></span><br>
+            <span class="hotkey-hint" aria-hidden="true">Удалить пост - <kbd>Delete</kbd></span><br>
+            <ul id="post-list" role="list" aria-label="Список постов">
+                
+            </ul>
+            <p id="no-results">По вашему запросу ничего не найдено</p><br>
+
+            <select id="filter-readability">
+                <option value="0">Любая сложность</option>
+                <option value="20">Легкие</option>
+                <option value="40">Средние</option>
+                <option value="60">Сложные</option>
+            </select>
+
+            <!-- <button id="export-csv">Экспорт в CSV</button> -->
+            <a href="/api/export-csv" download="blog-stats.csv" id="export-csv" class="btn-link" role="button">Экспорт в CSV</a>
+
+            <section id="blog-stats" >
+                <h3>Статистика блога</h3>
+                <div id="stats-content">Загрузка...</div>
+                <canvas id="publish-chart" width="400" height="100"></canvas> 
+                <!-- <button id="export-csv">Экспорт в CSV</button> -->
+                <a href="/api/export-csv" download="blog-stats.csv" id="export-csv" class="btn-link" role="button">Экспорт в CSV</a>
+            </section>
+
+            <div id="post-detail-overlay"></div>
+
+            
+            <div id="post-detail-modal">
+                <h2 id="detail-title">Название поста</h2>
+                
+                <div id="detail-stats">
+                    <div><strong>Дата:</strong> <span id="stat-date"></span></div>
+                    <div><strong>Просмотры:</strong> <span id="stat-views"></span></div>
+                    <div><strong>Символов:</strong> <span id="stat-chars"></span></div>
+                    <div><strong>Слов:</strong> <span id="stat-words"></span></div>
+                    <div><strong>Сложность:</strong> <span id="stat-readability"></span></div>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <label><strong>Текст поста:</strong></label>
+                    <textarea id="detail-content-edit"></textarea>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button id="detail-format-btn">Форматировать (JS/Текст/Код)</button>
+                        <button id="detail-save-btn">Сохранить изменения</button>
+                        <!-- <button id="detail-close-btn">Закрыть</button> -->
+                        <a href="#" id="detail-close-btn" class="btn-close" role="button">Закрыть</a>
+                    </div>
+                </div>
+
+                <div id="detail-preview-container">
+                    <strong>Превью после форматирования:</strong>
+                    <div id="detail-formatted-result"></div>
+                </div>
+            </div>
+
+            <div id="admin-overlay"></div>
+            <div id="admin-modal">
+                <h2>Панель управления</h2>
+                <div id="admin-log"></div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th><th>Имя</th><th>Роль</th><th>Права</th><th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-list-body"></tbody>
+                </table>
+                <button id="admin-close-btn">Закрыть</button>
+            </div><br>
+
+            <!-- <button id="toggle-form-btn" class="btn-primary" accesskey="n" aria-keyshortcuts="Alt+N" style="margin-bottom: 20px;">
+                Создать пост <kbd>Alt</kbd>+<kbd>N</kbd>
+            </button> -->
+            <a href="#post-modal-overlay" id="toggle-form-btn" class="btn-primary" 
+            accesskey="n" aria-keyshortcuts="Alt+N" role="button" 
+            title="Создать новый пост (Alt N)">
+                Создать пост 
+            </a>
+            <span class="hotkey-hint2" aria-hidden="true"><kbd>Alt</kbd> + <kbd>N</kbd></span>
+
+            <div id="post-modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+                <div class="post-modal-content">
+                    <div class="modal-header">
+                        <h3>Новая запись в блог</h3>
+                        <!-- <button id="close-modal-btn" class="close-x">&times;</button> -->
+                        <a href="#" id="close-modal-btn" class="close-x" aria-label="Закрыть окно">&times;</a>
+                    </div>
+                    <form id="new-post-form">
+                        <div class="input-group">
+                            <label for="form-title">Заголовок</label>
+                            <input type="text" id="form-title" placeholder="Как назовем?" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="form-tags">Теги</label>
+                            <input type="text" id="form-tags" placeholder="js, life, web..." required>
+                        </div>
+                        <div class="input-group">
+                            <label for="form-content">Контент</label>
+                            <textarea id="form-content" rows="6" placeholder="О чем сегодня думаем?" required></textarea>
+                        </div>
+                        <button type="submit" class="btn-publish">Опубликовать</button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="shortcuts-modal" class="modal-overlay" role="dialog" aria-labelledby="shortcuts-title">
+                <div class="post-modal-content">
+                    <h3 id="shortcuts-title">Настройка горячих клавиш</h3>
+                    <table id="shortcuts-table">
+                        <thead>
+                            <tr>
+                                <th>Действие</th>
+                                <th>Клавиша</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shortcuts-list-body">
+                            </tbody>
+                    </table>
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button id="save-shortcuts-btn" class="btn-publish">Сохранить</button>
+                        <a href="#" id="close-shortcuts-btn" class="btn-close" role="button">Закрыть</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer role="contentinfo">
+
+        </footer>
+    </body>
+</html>
