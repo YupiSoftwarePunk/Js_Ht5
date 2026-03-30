@@ -92,6 +92,8 @@ window.resetAndLoad = () => {
         window.isAllLoaded = false;
         window.isLoading = false;
 
+        blogStorage.set('scroll_state', null); 
+
         const postList = document.getElementById('post-list');
         if (postList) postList.innerHTML = '';
 
@@ -127,7 +129,36 @@ const throttle = (func, limit) => {
     }
 };
 
-window.loadNextBatch = () => {
+const virtualPostDataMap = new WeakMap();
+
+const virtualScrollObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        const wrapper = entry.target;
+        
+        if (entry.isIntersecting) {
+            if (wrapper.innerHTML === '') {
+                const postData = virtualPostDataMap.get(wrapper);
+                if (postData) {
+                    wrapper.style.height = '';
+                    window.CreatePosts(postData, blogStorage, wrapper);
+
+                    if (typeof initPostDetails === 'function') {
+                        initPostDetails([postData]);
+                    }
+                }
+            }
+        } else {
+            if (wrapper.innerHTML !== '') {
+                wrapper.style.height = `${wrapper.offsetHeight}px`;
+                wrapper.innerHTML = '';
+            }
+        }
+    });
+}, { 
+    rootMargin: '1000px' 
+});
+
+window.loadNextBatch = (restorePages = null) => {
     if (window.isLoading || window.isAllLoaded) return;
 
     const loader = document.getElementById('loader-indicator');
@@ -140,10 +171,15 @@ window.loadNextBatch = () => {
     if (loader) loader.style.display = 'block';
     if (loadMoreBtn) loadMoreBtn.style.display = 'none';
 
+    const delay = restorePages ? 0 : 800;
+
     setTimeout(() => {
         try {
             const start = window.currentPage * window.postsPerPage;
-            const end = start + window.postsPerPage;
+            const end = restorePages 
+            ? restorePages * window.postsPerPage 
+            : start + window.postsPerPage;
+
             const chunk = window.currentActivePosts.slice(start, end);
 
             if (chunk.length > 0) {
@@ -151,23 +187,31 @@ window.loadNextBatch = () => {
                 let firstNewPost = null;
 
                 chunk.forEach((post, index) => {
-                    const postElement = window.CreatePosts(post, blogStorage, fragment);
-                    if (index === 0) firstNewPost = postElement;
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'virtual-post-wrapper';
+
+                    virtualPostDataMap.set(wrapper, post);
+
+                    window.CreatePosts(post, blogStorage, wrapper);
+
+                    virtualScrollObserver.observe(wrapper);
+                    
+                    if (index === 0) firstNewPost = wrapper;
+                    fragment.appendChild(wrapper);
                 });
 
                 if (postList) {
                     postList.appendChild(fragment);
 
-                    if (firstNewPost && window.currentPage > 0) {
+                    if (firstNewPost && window.currentPage > 0 && !restorePages) {
                         firstNewPost.scrollIntoView({
                             behavior: 'smooth',
                             block: 'start'
                         });
                     }
-                }
-                
-                window.currentPage++;
+                } 
             }
+            window.currentPage = restorePages ? restorePages : window.currentPage + 1;
 
             if (window.currentPage * window.postsPerPage >= window.currentActivePosts.length) {
                 window.isAllLoaded = true;
@@ -179,6 +223,15 @@ window.loadNextBatch = () => {
                 if (loader) loader.style.display = 'none';
                 if (loadMoreBtn) loadMoreBtn.style.display = 'block'; 
             }
+
+            if (restorePages) {
+                const savedState = blogStorage.get('scroll_state');
+                if (savedState && savedState.y) {
+                    setTimeout(() => {
+                        window.scrollTo({ top: savedState.y, behavior: 'instant' });
+                    }, 50);
+                }
+            }
         } 
         catch (error) {
             console.error("Критическая ошибка при подгрузке данных:", error);
@@ -188,7 +241,7 @@ window.loadNextBatch = () => {
             window.isLoading = false;
             if (loader) loader.style.display = 'none';
         }
-    }, 800);
+    }, delay);
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -219,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const endMsg = document.createElement('div');
         endMsg.id = 'end-message';
-        endMsg.textContent = 'Вы просмотрели все публикации.';
+        endMsg.textContent = 'Больше постов нет';
         endMsg.style.display = 'none';
         endMsg.style.textAlign = 'center';
         endMsg.style.padding = '20px';
@@ -235,11 +288,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 const throttledLoad = throttle(() => window.loadNextBatch(), 200);
                 throttledLoad();
             }
-        }, { rootMargin: '200px' });
+        }, { rootMargin: '600px' });
         observer.observe(sentinel);
     }
 
-    window.loadNextBatch();
+    const savedScrollState = blogStorage.get('scroll_state');
+
+    if (savedScrollState && savedScrollState.page > 0) {
+        window.loadNextBatch(savedScrollState.page); 
+    } 
+    else {
+        window.loadNextBatch();
+    }
+
+    window.addEventListener('beforeunload', () => {
+        blogStorage.set('scroll_state', {
+            y: window.scrollY,
+            page: window.currentPage
+        });
+    });
+    
     initTags();
 
     const closeModal = () => {

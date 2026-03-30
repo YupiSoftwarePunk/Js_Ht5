@@ -922,3 +922,7 @@ kbd:hover {
 .load-more-style:hover {
     background-color: #2980b9;
 }
+
+.virtual-post-wrapper {
+    contain: layout style; 
+}
