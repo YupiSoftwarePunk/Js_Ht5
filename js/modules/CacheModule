@@ -1,0 +1,65 @@
+export class Cache {
+    constructor(options = {}) {
+        this.cache = new Map();
+        this.pendingPromises = new Map();
+        this.maxSize = options.maxSize || 50; 
+        this.ttl = options.ttl || 5 * 60 * 1000; 
+    }
+
+    async get(key, computeFn) {
+        const now = Date.now();
+
+        if (this.cache.has(key)) {
+            const item = this.cache.get(key);
+            
+            if (now - item.timestamp < this.ttl) {
+                this.cache.delete(key);
+                this.cache.set(key, item);
+                return item.value;
+            } 
+            else {
+
+                this.cache.delete(key);
+            }
+        }
+
+        if (this.pendingPromises.has(key)) {
+            return this.pendingPromises.get(key);
+        }
+
+        const computePromise = (async () => {
+            try {
+                const value = await computeFn();
+                this._set(key, value);
+                return value;
+            } 
+            catch (error) {
+                console.error(`Ошибка при вычислении кэша для ключа [${key}]:`, error);
+                throw error;
+            }
+            finally {
+                this.pendingPromises.delete(key);
+            }
+        })();
+
+        this.pendingPromises.set(key, computePromise);
+        return computePromise;
+    }
+
+    _set(key, value) {
+        if (this.cache.size >= this.maxSize) {
+            const oldestKey = this.cache.keys().next().value;
+            this.cache.delete(oldestKey);
+        }
+        this.cache.set(key, { value, timestamp: Date.now() });
+    }
+
+    clear() {
+        this.cache.clear();
+        this.pendingPromises.clear();
+    }
+    
+    invalidate(key) {
+        this.cache.delete(key);
+    }
+}
