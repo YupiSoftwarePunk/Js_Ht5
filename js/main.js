@@ -87,23 +87,44 @@ window.postsPerPage = 3;
 window.currentActivePosts = [...allPosts];
 
 window.resetAndLoad = () => {
-    window.currentPage = 0;
-    window.isAllLoaded = false;
-    window.isLoading = false;
+    try {
+        window.currentPage = 0;
+        window.isAllLoaded = false;
+        window.isLoading = false;
 
-    const postList = document.getElementById('post-list');
-    if (postList) postList.innerHTML = '';
+        const postList = document.getElementById('post-list');
+        if (postList) postList.innerHTML = '';
 
-    const endMsg = document.getElementById('end-message');
-    const loadMoreBtn = document.getElementById('load-more-btn');
-    const loader = document.getElementById('loader-indicator');
+        const endMsg = document.getElementById('end-message');
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        const loader = document.getElementById('loader-indicator');
 
-    if (endMsg) endMsg.style.display = 'none';
-    if (loader) loader.style.display = 'none';
-    if (loadMoreBtn) {
-        loadMoreBtn.style.display = 'block';
+        if (endMsg) endMsg.style.display = 'none';
+        if (loader) loader.style.display = 'none';
+        if (loadMoreBtn) {
+            loadMoreBtn.style.display = 'block';
+        }
+        window.loadNextBatch();
+    } 
+    catch (error) {
+        console.error("Ошибка при сбросе и загрузке постов:", error);
     }
-    window.loadNextBatch();
+};
+
+const throttle = (func, limit) => {
+    try {
+    let inThrottle;
+    return (...args) => {
+        if (!inThrottle) {
+            func.apply(this, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    };
+    } 
+    catch (error) {
+        console.error("Ошибка в функции throttle:", error);
+    }
 };
 
 window.loadNextBatch = () => {
@@ -112,6 +133,7 @@ window.loadNextBatch = () => {
     const loader = document.getElementById('loader-indicator');
     const loadMoreBtn = document.getElementById('load-more-btn');
     const endMsg = document.getElementById('end-message');
+    const postList = document.getElementById('post-list');
 
     window.isLoading = true;
 
@@ -119,26 +141,53 @@ window.loadNextBatch = () => {
     if (loadMoreBtn) loadMoreBtn.style.display = 'none';
 
     setTimeout(() => {
-        const start = window.currentPage * window.postsPerPage;
-        const end = start + window.postsPerPage;
-        const chunk = window.currentActivePosts.slice(start, end);
+        try {
+            const start = window.currentPage * window.postsPerPage;
+            const end = start + window.postsPerPage;
+            const chunk = window.currentActivePosts.slice(start, end);
 
-        if (chunk.length > 0) {
-            chunk.forEach(post => window.CreatePosts(post, blogStorage));
-            window.currentPage++;
-        }
+            if (chunk.length > 0) {
+                const fragment = document.createDocumentFragment();
+                let firstNewPost = null;
 
-        if (window.currentPage * window.postsPerPage >= window.currentActivePosts.length) {
-            window.isAllLoaded = true;
-            if (endMsg) endMsg.style.display = 'block';
+                chunk.forEach((post, index) => {
+                    const postElement = window.CreatePosts(post, blogStorage, fragment);
+                    if (index === 0) firstNewPost = postElement;
+                });
+
+                if (postList) {
+                    postList.appendChild(fragment);
+
+                    if (firstNewPost && window.currentPage > 0) {
+                        firstNewPost.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }
+                
+                window.currentPage++;
+            }
+
+            if (window.currentPage * window.postsPerPage >= window.currentActivePosts.length) {
+                window.isAllLoaded = true;
+                if (endMsg) endMsg.style.display = 'block';
+                if (loader) loader.style.display = 'none';
+                if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+            } 
+            else {
+                if (loader) loader.style.display = 'none';
+                if (loadMoreBtn) loadMoreBtn.style.display = 'block'; 
+            }
+        } 
+        catch (error) {
+            console.error("Критическая ошибка при подгрузке данных:", error);
+            if (loadMoreBtn) loadMoreBtn.style.display = 'block';
+        } 
+        finally {
+            window.isLoading = false;
             if (loader) loader.style.display = 'none';
-            if (loadMoreBtn) loadMoreBtn.style.display = 'none';
-        } else {
-            if (loader) loader.style.display = 'none';
-            if (loadMoreBtn) loadMoreBtn.style.display = 'block'; 
         }
-
-        window.isLoading = false;
     }, 800);
 };
 
@@ -183,7 +232,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const observer = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting && !window.isLoading && !window.isAllLoaded) {
-                window.loadNextBatch();
+                const throttledLoad = throttle(() => window.loadNextBatch(), 200);
+                throttledLoad();
             }
         }, { rootMargin: '200px' });
         observer.observe(sentinel);

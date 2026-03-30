@@ -17,6 +17,15 @@ export function highlightActiveLink()
 }
 
 
+const debounce = (func, delay) => {
+    let timeout;
+    return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(this, args), delay);
+    };
+};
+
+
 export function FilterPosts() {
     const elements = {
         input: document.querySelector('input'),
@@ -78,7 +87,9 @@ export function FilterPosts() {
         drawChart(visiblePosts);
     }
 
-    elements.input.addEventListener('input', update);
+    const debouncedUpdate = debounce(update, 300);
+
+    elements.input.addEventListener('input', debouncedUpdate);
     if (elements.readability) elements.readability.addEventListener('change', update);
     if (elements.sort) elements.sort.addEventListener('change', update);
     
