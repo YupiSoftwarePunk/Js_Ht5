@@ -25,7 +25,7 @@ export function initTags() {
         document.getElementById('post-list').innerHTML = '';
         window.currentActivePosts = [...window.allBlogPosts];
         window.currentPage = 0;
-        window.loadNextBatch();
+        window.resetAndLoad();
     };
     tagsContainer.prepend(resetBtn);
 
@@ -36,7 +36,7 @@ export function initTags() {
             return postTags.includes(selectedTag);
         });
         window.currentPage = 0;
-        window.loadNextBatch();
+        window.resetAndLoad();
 
         setTimeout(() => {
             document.querySelectorAll('#post-list li').forEach(li => {

@@ -64,12 +64,10 @@ export function FilterPosts() {
             visiblePosts.sort((a, b) => sortBy === 'date' ? b.date - a.date : b.views - a.views);
         }
 
-        elements.list.innerHTML = ''; 
         window.currentActivePosts = visiblePosts.map(p => p.originalData);
-        window.currentPage = 0;
-        
-        if (typeof window.loadNextBatch === 'function') {
-            window.loadNextBatch();
+
+        if (typeof window.resetAndLoad === 'function') {
+            window.resetAndLoad();
         }
 
         if (elements.noResults) {

@@ -86,15 +86,60 @@ window.currentPage = 0;
 window.postsPerPage = 3;
 window.currentActivePosts = [...allPosts];
 
+window.resetAndLoad = () => {
+    window.currentPage = 0;
+    window.isAllLoaded = false;
+    window.isLoading = false;
+
+    const postList = document.getElementById('post-list');
+    if (postList) postList.innerHTML = '';
+
+    const endMsg = document.getElementById('end-message');
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    const loader = document.getElementById('loader-indicator');
+
+    if (endMsg) endMsg.style.display = 'none';
+    if (loader) loader.style.display = 'none';
+    if (loadMoreBtn) {
+        loadMoreBtn.style.display = 'block';
+    }
+    window.loadNextBatch();
+};
+
 window.loadNextBatch = () => {
-    const start = window.currentPage * window.postsPerPage;
-    const end = start + window.postsPerPage;
-    const chunk = window.currentActivePosts.slice(start, end);
+    if (window.isLoading || window.isAllLoaded) return;
 
-    if (chunk.length === 0) return;
+    const loader = document.getElementById('loader-indicator');
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    const endMsg = document.getElementById('end-message');
 
-    chunk.forEach(post => window.CreatePosts(post, blogStorage));
-    window.currentPage++;
+    window.isLoading = true;
+
+    if (loader) loader.style.display = 'block';
+    if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+
+    setTimeout(() => {
+        const start = window.currentPage * window.postsPerPage;
+        const end = start + window.postsPerPage;
+        const chunk = window.currentActivePosts.slice(start, end);
+
+        if (chunk.length > 0) {
+            chunk.forEach(post => window.CreatePosts(post, blogStorage));
+            window.currentPage++;
+        }
+
+        if (window.currentPage * window.postsPerPage >= window.currentActivePosts.length) {
+            window.isAllLoaded = true;
+            if (endMsg) endMsg.style.display = 'block';
+            if (loader) loader.style.display = 'none';
+            if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+        } else {
+            if (loader) loader.style.display = 'none';
+            if (loadMoreBtn) loadMoreBtn.style.display = 'block'; 
+        }
+
+        window.isLoading = false;
+    }, 800);
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -107,24 +152,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const tagsInput = document.getElementById('form-tags');
     const contentInput = document.getElementById('form-content');
 
-    window.loadNextBatch();
-
-    initTags();
-
     const postListElement = document.getElementById('post-list');
     if (postListElement) {
+        const loader = document.createElement('div');
+        loader.id = 'loader-indicator';
+        loader.innerHTML = '<div class="spinner"></div><p>Загружаем посты...</p>';
+        loader.style.display = 'none';
+        loader.style.textAlign = 'center';
+        postListElement.after(loader);
+
+        const loadMoreBtn = document.createElement('button');
+        loadMoreBtn.id = 'load-more-btn';
+        loadMoreBtn.textContent = 'Загрузить еще';
+        loadMoreBtn.className = 'load-more-style'; 
+        loadMoreBtn.onclick = () => window.loadNextBatch();
+        loader.after(loadMoreBtn);
+
+        const endMsg = document.createElement('div');
+        endMsg.id = 'end-message';
+        endMsg.textContent = 'Вы просмотрели все публикации.';
+        endMsg.style.display = 'none';
+        endMsg.style.textAlign = 'center';
+        endMsg.style.padding = '20px';
+        loadMoreBtn.after(endMsg);
+
         const sentinel = document.createElement('div');
         sentinel.id = 'scroll-sentinel';
         sentinel.style.height = '10px';
-        postListElement.after(sentinel);
+        endMsg.after(sentinel);
 
         const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting && window.currentActivePosts.length > window.currentPage * window.postsPerPage) {
+            if (entries[0].isIntersecting && !window.isLoading && !window.isAllLoaded) {
                 window.loadNextBatch();
             }
         }, { rootMargin: '200px' });
         observer.observe(sentinel);
     }
+
+    window.loadNextBatch();
+    initTags();
 
     const closeModal = () => {
         modalOverlay.style.display = 'none';
