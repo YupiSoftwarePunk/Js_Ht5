@@ -31,22 +31,15 @@ export function FilterPosts() {
     if (!elements.list || !elements.input) 
         return;
 
-    const posts = Array.from(elements.list.querySelectorAll('li')).map(li => {
-        const rawContent = li.dataset.content || "";
-        const postDate = new Date(li.dataset.date);
+    const searchData = window.allBlogPosts.map(post => {
         return {
-            element: li,
-            titleNode: li.querySelector('.post-title'),
-            dateNode: li.querySelector('.stats-date'),
-            timeNode: li.querySelector('.stats-read-time'),
-            detailsNode: li.querySelector('.stats-details'),
-            
-            originalTitle: li.querySelector('.post-title')?.textContent || li.textContent,
-            content: rawContent.toLowerCase(),
-            tags: (li.dataset.tags || "").toLowerCase(),
-            date: isNaN(postDate.getTime()) ? new Date() : postDate, 
-            views: parseInt(li.dataset.views) || 0,
-            stats: analyzeText(rawContent)
+            originalData: post,
+            originalTitle: post.title,
+            content: post.content.toLowerCase(),
+            tags: post.tags.toLowerCase(),
+            date: new Date(post.date),
+            views: parseInt(post.views) || 0,
+            stats: analyzeText(post.content)
         };
     });
 
@@ -54,53 +47,29 @@ export function FilterPosts() {
         const searchText = elements.input.value.toLowerCase();
         const complexityLimit = elements.readability ? parseFloat(elements.readability.value) : 0;
         const sortBy = elements.sort ? elements.sort.value : 'default';
-        let visiblePosts = [];
 
-        posts.forEach(post => {
+        let visiblePosts = searchData.filter(post => {
             const isTextMatch = (post.originalTitle.toLowerCase() + post.content + post.tags).includes(searchText);
-            
             let isComplexityMatch = true;
-            if (complexityLimit === 20) isComplexityMatch = post.stats.readability < 20;
-            if (complexityLimit === 40) isComplexityMatch = post.stats.readability >= 20 && post.stats.readability < 40;
-            if (complexityLimit === 60) isComplexityMatch = post.stats.readability >= 40;
-
-            const isVisible = isTextMatch && isComplexityMatch;
-            post.element.style.display = isVisible ? "" : "none";
-
-            if (isVisible) {
-                visiblePosts.push(post);
-
-                if (post.dateNode) post.dateNode.textContent = getFriendlyDate(post.element.dataset.date);
-                if (post.timeNode) post.timeNode.textContent = `⏱ ${post.stats.readTime} мин.`;
-                if (post.detailsNode) {
-                    post.detailsNode.innerHTML = ''; 
-    
-                    post.detailsNode.append(`(Слов: ${post.stats.words}, LIX: ${post.stats.readability}) `);
-
-                    const tagList = post.element.dataset.tags.split(',');
-                    tagList.forEach(tag => {
-                        const tagBtn = document.createElement('button');
-                        tagBtn.classList.add('tag'); 
-                        tagBtn.textContent = tag.trim();
-                        post.detailsNode.append(tagBtn);
-                    });
-                }
-
-                if (searchText !== "" && post.titleNode) {
-                    const escapedTitle = post.originalTitle.replace(/[&<>"']/g, m => ({
-                        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-                    }[m]));
-                    const regex = new RegExp(`(${searchText})`, "gi");
-                    post.titleNode.innerHTML = escapedTitle.replace(regex, '<mark>$1</mark>');
-                } else if (post.titleNode) {
-                    post.titleNode.textContent = post.originalTitle;
-                }
-            }
+            const lix = parseFloat(post.stats.readability);
+            
+            if (complexityLimit === 20) isComplexityMatch = lix < 20;
+            if (complexityLimit === 40) isComplexityMatch = lix >= 20 && lix < 40;
+            if (complexityLimit === 60) isComplexityMatch = lix >= 40;
+            
+            return isTextMatch && isComplexityMatch;
         });
 
         if (sortBy !== "default") {
             visiblePosts.sort((a, b) => sortBy === 'date' ? b.date - a.date : b.views - a.views);
-            visiblePosts.forEach(post => elements.list.appendChild(post.element));
+        }
+
+        elements.list.innerHTML = ''; 
+        window.currentActivePosts = visiblePosts.map(p => p.originalData);
+        window.currentPage = 0;
+        
+        if (typeof window.loadNextBatch === 'function') {
+            window.loadNextBatch();
         }
 
         if (elements.noResults) {

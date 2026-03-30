@@ -81,6 +81,22 @@ const postsData = [
 const dynamicPosts = blogStorage.get('dynamic_posts') || [];
 const allPosts = [...postsData, ...dynamicPosts];
 
+window.allBlogPosts = allPosts;
+window.currentPage = 0;
+window.postsPerPage = 3;
+window.currentActivePosts = [...allPosts];
+
+window.loadNextBatch = () => {
+    const start = window.currentPage * window.postsPerPage;
+    const end = start + window.postsPerPage;
+    const chunk = window.currentActivePosts.slice(start, end);
+
+    if (chunk.length === 0) return;
+
+    chunk.forEach(post => window.CreatePosts(post, blogStorage));
+    window.currentPage++;
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const modalOverlay = document.getElementById('post-modal-overlay');
     const openBtn = document.getElementById('toggle-form-btn');
@@ -91,9 +107,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const tagsInput = document.getElementById('form-tags');
     const contentInput = document.getElementById('form-content');
 
-    allPosts.forEach(post => CreatePosts(post, blogStorage));
+    window.loadNextBatch();
 
     initTags();
+
+    const postListElement = document.getElementById('post-list');
+    if (postListElement) {
+        const sentinel = document.createElement('div');
+        sentinel.id = 'scroll-sentinel';
+        sentinel.style.height = '10px';
+        postListElement.after(sentinel);
+
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && window.currentActivePosts.length > window.currentPage * window.postsPerPage) {
+                window.loadNextBatch();
+            }
+        }, { rootMargin: '200px' });
+        observer.observe(sentinel);
+    }
 
     const closeModal = () => {
         modalOverlay.style.display = 'none';

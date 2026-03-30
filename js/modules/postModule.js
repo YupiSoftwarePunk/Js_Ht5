@@ -9,25 +9,29 @@ export function initPostDetails(postsData) {
     const previewResult = document.getElementById('detail-formatted-result');
 
     let currentPostIndex = null;
-    const postElements = document.querySelectorAll('#post-list li');
+    const postList = document.getElementById('post-list');
     
-    postElements.forEach((el, index) => {
-        el.addEventListener('click', () => {
-            const post = postsData[index];
-            currentPostIndex = index;
-            document.getElementById('detail-title').textContent = post.title;
-            contentEdit.value = post.content;
-            const stats = TextFormatter.getStats(post.content);
-            document.getElementById('stat-date').textContent = post.date;
-            document.getElementById('stat-views').textContent = post.views;
-            document.getElementById('stat-chars').textContent = stats.chars;
-            document.getElementById('stat-words').textContent = stats.words;
-            document.getElementById('stat-readability').textContent = stats.complexity;
+    postList.addEventListener('click', (event) => {
+        const li = event.target.closest('.focusable-post');
+        if (!li) return; 
+        if (event.target.classList.contains('tag')) return; 
 
-            previewContainer.style.display = 'none';
-            modal.style.display = 'block';
-            overlay.style.display = 'block';
-        });
+        currentPostIndex = postsData.findIndex(p => String(p.id) === String(li.id));
+        if (currentPostIndex === -1) return;
+
+        const post = postsData[currentPostIndex];
+        document.getElementById('detail-title').textContent = post.title;
+        contentEdit.value = post.content;
+        const stats = TextFormatter.getStats(post.content);
+        document.getElementById('stat-date').textContent = post.date;
+        document.getElementById('stat-views').textContent = post.views;
+        document.getElementById('stat-chars').textContent = stats.chars;
+        document.getElementById('stat-words').textContent = stats.words;
+        document.getElementById('stat-readability').textContent = stats.complexity;
+
+        previewContainer.style.display = 'none';
+        modal.style.display = 'block';
+        overlay.style.display = 'block';
     });
 
     document.getElementById('detail-format-btn').onclick = () => {

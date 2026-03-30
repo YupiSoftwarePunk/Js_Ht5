@@ -1,11 +1,11 @@
 export function initTags() {
-    const postList = document.getElementById('post-list');
-    const posts = Array.from(postList.querySelectorAll('li'));
     const tagsContainer = document.getElementById('tags-container');
+    if (!tagsContainer) return;
 
     const allTags = new Set();
-    posts.forEach(post => {
-        const tags = post.dataset.tags.split(',').map(tag => tag.trim());
+
+    window.allBlogPosts.forEach(post => {
+        const tags = post.tags.split(',').map(tag => tag.trim());
         tags.forEach(tag => allTags.add(tag));
     });
 
@@ -21,19 +21,27 @@ export function initTags() {
 
     const resetBtn = document.createElement('button');
     resetBtn.textContent = "Сбросить всё";
-    resetBtn.onclick = () => posts.forEach(p => p.style.display = 'block');
+    resetBtn.onclick = () => {
+        document.getElementById('post-list').innerHTML = '';
+        window.currentActivePosts = [...window.allBlogPosts];
+        window.currentPage = 0;
+        window.loadNextBatch();
+    };
     tagsContainer.prepend(resetBtn);
 
-
     function filterByTag(selectedTag) {
-        posts.forEach(post => {
-            const postTags = post.dataset.tags.split(',').map(tag => tag.trim());
-            if (postTags.includes(selectedTag)) {
-                post.style.display = 'block'; 
-                post.style.borderLeft = "4px solid #007bff"; 
-            } else {
-                post.style.display = 'none'; 
-            }
+        document.getElementById('post-list').innerHTML = '';
+        window.currentActivePosts = window.allBlogPosts.filter(post => {
+            const postTags = post.tags.split(',').map(tag => tag.trim());
+            return postTags.includes(selectedTag);
         });
+        window.currentPage = 0;
+        window.loadNextBatch();
+
+        setTimeout(() => {
+            document.querySelectorAll('#post-list li').forEach(li => {
+                li.style.borderLeft = "4px solid #007bff";
+            });
+        }, 50);
     }
 }

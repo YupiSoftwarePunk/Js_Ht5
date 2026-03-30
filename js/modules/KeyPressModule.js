@@ -116,7 +116,7 @@ export function initKeyboardShortcuts(storage) {
                 activePost.querySelector('.post-like-container')?.click();
                 return;
             }
-            if (isShortcut(userShortcuts.editPost) || e.key.toLowerCase() === 'у') {
+            if (e.key.toLowerCase() === 'у' || e.key.toLowerCase() === 'e') {
                 if (!isTyping) activePost.click();
             }
 
